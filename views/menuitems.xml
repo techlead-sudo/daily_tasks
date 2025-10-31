@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        
+        <!-- Main Menu: Daily Tasks -->
+        <menuitem id="menu_daily_tasks_root" 
+                  name="Daily Tasks" 
+                  sequence="10" 
+                  web_icon="daily_tasks,static/description/icon.png"/>
+
+        <!-- Tasks Submenu -->
+        <menuitem id="menu_daily_tasks_tasks" 
+                  name="Tasks" 
+                  parent="menu_daily_tasks_root" 
+                  sequence="10"/>
+
+        <!-- My Tasks -->
+        <menuitem id="menu_my_daily_tasks" 
+                  name="My Tasks" 
+                  parent="menu_daily_tasks_tasks" 
+                  action="action_my_daily_tasks" 
+                  sequence="10"/>
+
+        <!-- All Tasks (HR/Managers only) -->
+        <menuitem id="menu_all_daily_tasks" 
+                  name="All Tasks" 
+                  parent="menu_daily_tasks_tasks" 
+                  action="action_all_daily_tasks" 
+                  sequence="20"
+                  groups="hr.group_hr_user"/>
+
+        <!-- Reporting Submenu -->
+        <menuitem id="menu_daily_tasks_reporting" 
+                  name="Reporting" 
+                  parent="menu_daily_tasks_root" 
+                  sequence="20"
+                  groups="hr.group_hr_user"/>
+
+        <!-- Dashboard -->
+        <menuitem id="menu_daily_tasks_dashboard" 
+                  name="Dashboard" 
+                  parent="menu_daily_tasks_reporting" 
+                  action="action_daily_tasks_reporting" 
+                  sequence="10"
+                  groups="hr.group_hr_user"/>
+
+    </data>
+</odoo>

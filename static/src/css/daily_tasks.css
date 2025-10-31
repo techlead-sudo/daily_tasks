@@ -1,0 +1,44 @@
+/* Daily Tasks Module Custom Styles */
+
+.daily_task_form .oe_title h1 {
+    color: #2E8B57;
+    font-weight: bold;
+}
+
+.daily_task_kanban .oe_kanban_card {
+    border-left: 4px solid #2E8B57;
+}
+
+.daily_task_kanban .oe_kanban_card.oe_kanban_color_1 {
+    border-left-color: #3498db;
+}
+
+.daily_task_kanban .oe_kanban_card.oe_kanban_color_2 {
+    border-left-color: #e74c3c;
+}
+
+.o_daily_task_dashboard {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.o_daily_task_stats {
+    text-align: center;
+    padding: 15px;
+}
+
+.o_daily_task_stats .o_stat_value {
+    font-size: 2em;
+    font-weight: bold;
+    display: block;
+}
+
+.o_daily_task_stats .o_stat_label {
+    font-size: 0.9em;
+    opacity: 0.8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}

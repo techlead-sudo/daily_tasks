@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <!-- Daily Task User Group -->
+        <record id="group_daily_task_user" model="res.groups">
+            <field name="name">Daily Task User</field>
+            <field name="category_id" ref="base.module_category_human_resources"/>
+            <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+            <field name="comment">Can create and manage their own daily tasks.</field>
+        </record>
+        <!-- Daily Task Manager Group -->
+        <record id="group_daily_task_manager" model="res.groups">
+            <field name="name">Daily Task Manager</field>
+            <field name="category_id" ref="base.module_category_human_resources"/>
+            <field name="implied_ids" eval="[(4, ref('group_daily_task_user'))]"/>
+            <field name="comment">Can see and manage all daily tasks.</field>
+        </record>
+    </data>
+</odoo>
