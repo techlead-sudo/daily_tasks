@@ -29,9 +29,6 @@
                                 class="btn-success" icon="fa-lock"
                                 invisible="pod_submitted"
                                 confirm="Once submitted, POD cannot be modified. Are you sure?"/>
-                        <button name="_send_test_email_to_manager" string="Test Email to Manager" type="object" 
-                                class="btn-info" icon="fa-envelope"
-                                groups="base.group_system"/>
                         <button name="action_mark_done" string="Mark as Done" type="object"
                                 class="btn-success" icon="fa-check-circle" 
                                 invisible="state == 'done'"/>

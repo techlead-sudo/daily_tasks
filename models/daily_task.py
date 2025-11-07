@@ -282,37 +282,6 @@ class DailyTask(models.Model):
         mail = self.env['mail.mail'].sudo().create(mail_values)
         mail.send()
     
-    def _send_test_email_to_manager(self):
-        """Test email sending to manager - for system administrators only"""
-        for record in self:
-            if not record.manager_id:
-                raise ValidationError('No manager assigned to this employee.')
-            if not record.manager_id.work_email:
-                raise ValidationError(f'Manager {record.manager_id.name} has no work email configured.')
-            
-            record._send_email_to_manager(
-                subject='Test Email - Daily Tasks Module',
-                body=f'''
-                <p>Hello,</p>
-                <p>This is a test email from the Daily Tasks module.</p>
-                <p><strong>Employee:</strong> {record.employee_id.name}</p>
-                <p><strong>Manager:</strong> {record.manager_id.name}</p>
-                <p><strong>Manager Email:</strong> {record.manager_id.work_email}</p>
-                <p>If you received this email, the email configuration is working correctly.</p>
-                '''
-            )
-            
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': 'Test Email Sent',
-                    'message': f'Test email sent to {record.manager_id.work_email}',
-                    'type': 'success',
-                    'sticky': False,
-                }
-            }
-    
     @api.model
     def _cron_check_unsubmitted_pod(self):
         """Scheduled action to check for unsubmitted PODs and notify managers"""
