@@ -23,6 +23,7 @@
         'security/security.xml',
         'security/groups.xml',
         'security/ir.model.access.csv',
+        'data/cron_data.xml',
         'views/daily_task_views.xml',
         'views/menuitems.xml',
     ],

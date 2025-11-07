@@ -12,6 +12,7 @@
                     <field name="department_id"/>
                     <field name="manager_id"/>
                     <field name="pod_description" widget="text"/>
+                    <field name="pod_submitted" string="POD Locked" widget="boolean_toggle"/>
                     <field name="sod_description" widget="text"/>
                     <field name="state" widget="badge" decoration-success="state == 'done'" decoration-info="state == 'draft'"/>
                 </tree>
@@ -24,10 +25,13 @@
             <field name="arch" type="xml">
                 <form string="Daily Task" class="daily_task_form">
                     <header>
-                        <button name="action_set_pod" string="POD (Plan of the Day)" type="object" 
-                                class="btn-primary" icon="fa-edit"/>
-                        <button name="action_set_sod" string="SOD (Summary of the Day)" type="object" 
-                                class="btn-primary" icon="fa-check"/>
+                        <button name="action_submit_pod" string="Submit POD" type="object" 
+                                class="btn-success" icon="fa-lock"
+                                invisible="pod_submitted"
+                                confirm="Once submitted, POD cannot be modified. Are you sure?"/>
+                        <button name="_send_test_email_to_manager" string="Test Email to Manager" type="object" 
+                                class="btn-info" icon="fa-envelope"
+                                groups="base.group_system"/>
                         <button name="action_mark_done" string="Mark as Done" type="object"
                                 class="btn-success" icon="fa-check-circle" 
                                 invisible="state == 'done'"/>
@@ -35,6 +39,7 @@
                                 class="btn-warning" icon="fa-undo" 
                                 invisible="state == 'draft'"/>
                         <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
+                        <field name="pod_submitted" invisible="1"/>
                     </header>
                     <sheet>
                         <group>
@@ -49,7 +54,12 @@
                         </group>
                         <notebook>
                             <page string="Plan of the Day (POD)" name="pod">
-                                <field name="pod_description" placeholder="Enter your plan for the day..."/>
+                                <div class="alert alert-success" role="alert" invisible="not pod_submitted">
+                                    <i class="fa fa-lock"/> POD has been submitted and locked on <field name="pod_submitted_date" readonly="1"/>
+                                </div>
+                                <field name="pod_description" 
+                                       placeholder="Enter your plan for the day..." 
+                                       readonly="pod_submitted"/>
                             </page>
                             <page string="Summary of the Day (SOD)" name="sod">
                                 <field name="sod_description" placeholder="Enter summary of what was accomplished..."/>
