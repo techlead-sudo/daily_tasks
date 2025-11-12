@@ -32,9 +32,6 @@
                         <button name="action_mark_done" string="Mark as Done" type="object"
                                 class="btn-success" icon="fa-check-circle" 
                                 invisible="state == 'done'"/>
-                        <button name="action_mark_draft" string="Mark as Draft" type="object"
-                                class="btn-warning" icon="fa-undo" 
-                                invisible="state == 'draft'"/>
                         <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
                         <field name="pod_submitted" invisible="1"/>
                     </header>
@@ -59,7 +56,7 @@
                                        readonly="pod_submitted"/>
                             </page>
                             <page string="Summary of the Day (SOD)" name="sod">
-                                <field name="sod_description" placeholder="Enter summary of what was accomplished..."/>
+                                <field name="sod_description" placeholder="Enter summary of what was accomplished..." readonly="state == 'done'"/>
                             </page>
                         </notebook>
                     </sheet>

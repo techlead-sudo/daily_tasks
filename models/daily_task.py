@@ -233,22 +233,20 @@ class DailyTask(models.Model):
         return defaults
     
     def write(self, vals):
-        """Override write to prevent POD changes after submission and notify on SOD"""
-        # Check if SOD is being written for the first time
+        """Override write to prevent POD changes after submission, SOD after done, and notify on SOD"""
         sod_written = False
         for record in self:
-            # If POD is submitted and someone tries to change it, restore the original value
+            # Prevent POD changes after submission
             if record.pod_submitted and 'pod_description' in vals:
-                # Remove pod_description from vals to prevent any changes
                 vals.pop('pod_description', None)
-            
-            # Check if SOD is being added or updated
-            if 'sod_description' in vals and vals.get('sod_description'):
+            # Prevent SOD changes after state is done
+            if record.state == 'done' and 'sod_description' in vals:
+                vals.pop('sod_description', None)
+            # Check if SOD is being added or updated (only if not done)
+            if 'sod_description' in vals and vals.get('sod_description') and record.state != 'done':
                 if not record.sod_description or record.sod_description != vals['sod_description']:
                     sod_written = True
-        
         result = super(DailyTask, self).write(vals)
-        
         # Send email notification to manager when SOD is written
         if sod_written:
             for record in self:
@@ -263,7 +261,6 @@ class DailyTask(models.Model):
                         <p>This is an automated notification from the Daily Tasks system.</p>
                         """
                     )
-        
         return result
     
     def _send_email_to_manager(self, subject, body):
