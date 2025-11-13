@@ -92,6 +92,30 @@ class DailyTask(models.Model):
             result.append((record.id, name))
         return result
 
+    @api.model
+    def _get_user_accessible_tasks_domain(self):
+        """Get domain for tasks accessible by current user"""
+        user = self.env.user
+        employee = self.env['hr.employee'].search([
+            ('user_id', '=', user.id)
+        ], limit=1)
+        
+        if not employee:
+            return [('id', '=', False)]  # User has no employee record, see nothing
+        
+        # Users can see:
+        # 1. Their own tasks
+        # 2. Tasks of their direct reports
+        direct_reports = self.env['hr.employee'].search([
+            ('parent_id', '=', employee.id)
+        ])
+        
+        domain = ['|',
+            ('employee_id.user_id', '=', user.id),
+            ('employee_id', 'in', direct_reports.ids)
+        ]
+        return domain
+
     def _get_default_employee(self):
         """Get the employee record for the current user"""
         employee = self.env['hr.employee'].search([
