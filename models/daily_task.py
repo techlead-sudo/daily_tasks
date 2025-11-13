@@ -92,30 +92,6 @@ class DailyTask(models.Model):
             result.append((record.id, name))
         return result
 
-    @api.model
-    def search(self, args, offset=0, limit=None, order=None, count=False):
-        """Override search to apply access control at Python level"""
-        # For read-only operations, apply domain restrictions
-        user = self.env.user
-        
-        # Check if user is in Daily Task User group (but not Manager)
-        is_manager = user.has_group('daily_tasks.group_daily_task_manager')
-        is_task_user = user.has_group('daily_tasks.group_daily_task_user')
-        
-        if is_task_user and not is_manager:
-            # Get employee record for current user
-            employee = self.env['hr.employee'].search([
-                ('user_id', '=', user.id)
-            ], limit=1)
-            
-            if employee:
-                # User can see their own tasks and direct reports' tasks
-                accessible_employees = employee | employee.child_ids
-                access_domain = [('employee_id', 'in', accessible_employees.ids)]
-                args = [access_domain, args] if args else access_domain
-        
-        return super(DailyTask, self).search(args, offset=offset, limit=limit, order=order, count=count)
-
     def _get_default_employee(self):
         """Get the employee record for the current user"""
         employee = self.env['hr.employee'].search([
