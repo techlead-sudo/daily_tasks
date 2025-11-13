@@ -21,13 +21,13 @@
                   action="action_my_daily_tasks" 
                   sequence="10"/>
 
-        <!-- All Tasks (HR/Managers only) -->
+        <!-- All Tasks (All Daily Task Users can see, but filtered by access rules) -->
         <menuitem id="menu_all_daily_tasks" 
                   name="All Tasks" 
                   parent="menu_daily_tasks_tasks" 
                   action="action_all_daily_tasks" 
                   sequence="20"
-                  groups="hr.group_hr_user"/>
+                  groups="daily_tasks.group_daily_task_user,daily_tasks.group_daily_task_manager,hr.group_hr_user"/>
 
         <!-- Reporting Submenu -->
         <menuitem id="menu_daily_tasks_reporting" 
