@@ -80,6 +80,10 @@
                     <field name="date" string="Date"/>
                     <filter string="My Tasks" name="my_tasks" 
                             domain="[('employee_id.user_id', '=', uid)]"/>
+                    <filter string="My Team" name="my_team"
+                            domain="['|', ('employee_id.parent_id.user_id', '=', uid), ('employee_id.parent_id', '=', uid)]"/>
+                    <filter string="Reports to Me" name="reporting_to_me" 
+                            domain="[('employee_id.parent_id.user_id', '=', uid)]"/>
                     <filter string="Today" name="today" 
                             domain="[('date', '=', context_today().strftime('%Y-%m-%d'))]"/>
                     <filter string="This Week" name="this_week" domain="[]" context="{'search_default_this_week': 1}"/>
