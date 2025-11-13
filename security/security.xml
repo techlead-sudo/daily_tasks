@@ -20,7 +20,7 @@
         <record id="daily_task_user_rule" model="ir.rule">
             <field name="name">Daily Tasks: User Own and Reports Tasks</field>
             <field name="model_id" ref="model_daily_task"/>
-            <field name="domain_force">['|', ('employee_id.user_id', '=', user.id), ('employee_id.parent_id.user_id', '=', user.id)]</field>
+            <field name="domain_force">['|', ('employee_id.user_id', '=', user.id), ('employee_id.parent_id', '=', user.employee_ids.id)]</field>
             <field name="groups" eval="[(4, ref('group_daily_task_user'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="False"/>

@@ -1,4 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_daily_task_user,Daily Task User Access,model_daily_task,daily_tasks.group_daily_task_user,1,1,1,1
+access_daily_task_user,Daily Task User Access,model_daily_task,daily_tasks.group_daily_task_user,1,1,1,0
 access_daily_task_manager,Daily Task Manager Access,model_daily_task,daily_tasks.group_daily_task_manager,1,1,1,1
 access_daily_task_system,Daily Task System Admin Access,model_daily_task,base.group_system,1,1,1,1
