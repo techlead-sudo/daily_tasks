@@ -195,13 +195,13 @@
         <record id="action_all_daily_tasks" model="ir.actions.act_window">
             <field name="res_model">daily.task</field>
             <field name="view_mode">tree,form,calendar,kanban</field>
-            <field name="context">{}</field>
+            <field name="context">{'search_default_my_team': 1}</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     No daily tasks found!
                 </p>
                 <p>
-                    View and manage all employee daily tasks.
+                    View and manage your team's daily tasks.
                 </p>
             </field>
         </record>
