@@ -1,6 +1,7 @@
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
+import pytz
 
 
 class DailyTask(models.Model):
@@ -175,8 +176,22 @@ class DailyTask(models.Model):
         }
 
     def action_mark_done(self):
-        """Mark task as done"""
+        """Mark task as done and send SOD notification to manager"""
         self.write({'state': 'done'})
+        
+        # Send SOD notification to manager when task is marked as done
+        for record in self:
+            if record.sod_description:
+                record._send_email_to_manager(
+                    subject=f'SOD Submitted - {record.employee_id.name}',
+                    body=f"""
+                    <p>Hello,</p>
+                    <p><strong>{record.employee_id.name}</strong> has submitted their Summary of the Day (SOD) for {record.date}.</p>
+                    <h4>Summary of the Day:</h4>
+                    <p>{record.sod_description or 'No description provided'}</p>
+                    <p>This is an automated notification from the Daily Tasks system.</p>
+                    """
+                )
 
     def action_mark_draft(self):
         """Mark task as draft"""
@@ -233,8 +248,7 @@ class DailyTask(models.Model):
         return defaults
     
     def write(self, vals):
-        """Override write to prevent POD changes after submission, SOD after done, and notify on SOD"""
-        sod_written = False
+        """Override write to prevent POD changes after submission and SOD after done"""
         for record in self:
             # Prevent POD changes after submission
             if record.pod_submitted and 'pod_description' in vals:
@@ -242,25 +256,7 @@ class DailyTask(models.Model):
             # Prevent SOD changes after state is done
             if record.state == 'done' and 'sod_description' in vals:
                 vals.pop('sod_description', None)
-            # Check if SOD is being added or updated (only if not done)
-            if 'sod_description' in vals and vals.get('sod_description') and record.state != 'done':
-                if not record.sod_description or record.sod_description != vals['sod_description']:
-                    sod_written = True
         result = super(DailyTask, self).write(vals)
-        # Send email notification to manager when SOD is written
-        if sod_written:
-            for record in self:
-                if vals.get('sod_description'):
-                    record._send_email_to_manager(
-                        subject=f'SOD Submitted - {record.employee_id.name}',
-                        body=f"""
-                        <p>Hello,</p>
-                        <p><strong>{record.employee_id.name}</strong> has submitted their Summary of the Day (SOD) for {record.date}.</p>
-                        <h4>Summary of the Day:</h4>
-                        <p>{vals.get('sod_description', 'No description provided')}</p>
-                        <p>This is an automated notification from the Daily Tasks system.</p>
-                        """
-                    )
         return result
     
     def _send_email_to_manager(self, subject, body):
@@ -282,106 +278,94 @@ class DailyTask(models.Model):
     @api.model
     def _cron_check_unsubmitted_pod(self):
         """Scheduled action to check for unsubmitted PODs and notify managers"""
-        today = fields.Date.context_today(self)
+        # Use company timezone and ensure we send notifications once per day
+        company_tz = self.env.user.tz or self.env.company.tz or 'UTC'
+        tz = pytz.timezone(company_tz)
+        now_utc = datetime.utcnow().replace(tzinfo=pytz.utc)
+        now_local = now_utc.astimezone(tz)
+
+        # Only proceed at 11:00 in company timezone
+        target_hour = 11
+        if now_local.hour != target_hour:
+            return
+
+        today_local = now_local.date()
         
-        # Get all active employees
+        # Skip sending on Sunday (weekday() returns 6 for Sunday)
+        if today_local.weekday() == 6:
+            return
+
+        # Ensure we only send once per day
+        param_key = 'daily_tasks.last_pod_notification'
+        last_sent = self.env['ir.config_parameter'].sudo().get_param(param_key)
+        if last_sent:
+            try:
+                last_sent_date = fields.Date.from_string(last_sent)
+                if last_sent_date == today_local:
+                    return
+            except Exception:
+                # If parsing fails, continue and overwrite
+                pass
+
+        # Get active employees who have a task for today but haven't submitted POD
+        employees_without_pod = self.env['hr.employee']
+        today = fields.Date.context_today(self)
         employees = self.env['hr.employee'].search([
             ('active', '=', True),
             ('user_id', '!=', False)
         ])
-        
-        employees_without_task = self.env['hr.employee']
-        employees_without_pod = self.env['hr.employee']
-        
+
         for employee in employees:
-            # Check if employee has a task for today
             task = self.search([
                 ('employee_id', '=', employee.id),
                 ('date', '=', today)
             ], limit=1)
-            
-            if not task:
-                # No task created at all
-                employees_without_task |= employee
-            elif not task.pod_submitted:
-                # Task exists but POD not submitted
+            if task and not task.pod_submitted:
                 employees_without_pod |= employee
-        
-        # Send notifications to managers
-        self._notify_managers_about_missing_pod(employees_without_task, employees_without_pod)
+
+        # Send notifications to managers (only for no_pod)
+        self._notify_managers_about_missing_pod(employees_without_pod)
+
+        # Record that we've sent today's notifications
+        self.env['ir.config_parameter'].sudo().set_param(param_key, fields.Date.to_string(today_local))
     
-    def _notify_managers_about_missing_pod(self, employees_without_task, employees_without_pod):
-        """Send notification to managers about employees who haven't submitted POD"""
-        # Group employees by manager
+    def _notify_managers_about_missing_pod(self, employees_without_pod):
+        """Send notification to direct managers about employees who haven't submitted POD.
+
+        This method notifies only the direct manager of employees who have a task
+        for today but did not submit their POD. It will only send an email to the
+        manager's `work_email` and will not create extra mail messages or activities
+        that might propagate to higher-level managers.
+        """
+        # Group employees by direct manager
         manager_employees_map = {}
-        
-        all_employees = employees_without_task | employees_without_pod
-        
-        for employee in all_employees:
-            if employee.parent_id:
-                manager = employee.parent_id
-                if manager not in manager_employees_map:
-                    manager_employees_map[manager] = {
-                        'no_task': self.env['hr.employee'],
-                        'no_pod': self.env['hr.employee']
-                    }
-                
-                if employee in employees_without_task:
-                    manager_employees_map[manager]['no_task'] |= employee
-                else:
-                    manager_employees_map[manager]['no_pod'] |= employee
-        
-        # Send notifications to each manager
-        for manager, employee_data in manager_employees_map.items():
-            if manager.user_id:
-                message_parts = []
-                
-                if employee_data['no_task']:
-                    no_task_names = ', '.join(employee_data['no_task'].mapped('name'))
-                    message_parts.append(f"<b>No task created:</b> {no_task_names}")
-                
-                if employee_data['no_pod']:
-                    no_pod_names = ', '.join(employee_data['no_pod'].mapped('name'))
-                    message_parts.append(f"<b>Task created but POD not submitted:</b> {no_pod_names}")
-                
-                if message_parts:
-                    message = f"""
-                    <p>The following employees have not submitted their Plan of the Day (POD) by 11:00 AM:</p>
-                    <ul>
-                        <li>{'</li><li>'.join(message_parts)}</li>
-                    </ul>
-                    <p>Please follow up with them.</p>
-                    """
-                    
-                    # Send email to manager
-                    if manager.work_email:
-                        mail_values = {
-                            'subject': f'POD Escalation Alert - {len(all_employees)} employee(s) pending',
-                            'body_html': message,
-                            'email_to': manager.work_email,
-                            'email_from': self.env.company.email or 'noreply@odoo.com',
-                            'auto_delete': False,
-                        }
-                        mail = self.env['mail.mail'].sudo().create(mail_values)
-                        mail.send()
-                    
-                    # Send message to manager via mail thread
-                    if manager.user_id and manager.user_id.partner_id:
-                        self.env['mail.message'].create({
-                            'subject': f'POD Escalation Alert - {len(all_employees)} employee(s) pending',
-                            'body': message,
-                            'partner_ids': [(4, manager.user_id.partner_id.id)],
-                            'message_type': 'notification',
-                            'subtype_id': self.env.ref('mail.mt_note').id,
-                        })
-                    
-                    # Create activity for manager
-                    if manager.user_id:
-                        self.env['mail.activity'].create({
-                            'activity_type_id': self.env.ref('mail.mail_activity_data_todo').id,
-                            'summary': f'POD Escalation - {len(all_employees)} employee(s) pending',
-                            'note': message,
-                            'user_id': manager.user_id.id,
-                            'res_id': self.env['hr.employee'].search([], limit=1).id,
-                            'res_model_id': self.env['ir.model']._get('hr.employee').id,
-                        })
+
+        for employee in employees_without_pod:
+            manager = employee.parent_id
+            if not manager:
+                continue
+            if manager not in manager_employees_map:
+                manager_employees_map[manager] = self.env['hr.employee']
+            manager_employees_map[manager] |= employee
+
+        # Send notifications to each manager (email only)
+        for manager, emp_records in manager_employees_map.items():
+            if not manager.user_id or not manager.work_email:
+                continue
+
+            emp_names = ', '.join(emp_records.mapped('name'))
+            message = f"""
+            <p>The following employees have not submitted their Plan of the Day (POD) by 11:00 AM:</p>
+            <p><strong>{emp_names}</strong></p>
+            <p>Please follow up with them.</p>
+            """
+
+            mail_values = {
+                'subject': f'POD Escalation Alert ',
+                'body_html': message,
+                'email_to': manager.work_email,
+                'email_from': self.env.company.email or 'noreply@odoo.com',
+                'auto_delete': False,
+            }
+            mail = self.env['mail.mail'].sudo().create(mail_values)
+            mail.send()
