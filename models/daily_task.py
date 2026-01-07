@@ -139,18 +139,7 @@ class DailyTask(models.Model):
             'pod_submitted': True,
             'pod_submitted_date': fields.Datetime.now()
         })
-        
-        # Send email notification to manager
-        self._send_email_to_manager(
-            subject=f'POD Submitted - {self.employee_id.name}',
-            body=f"""
-            <p>Hello,</p>
-            <p><strong>{self.employee_id.name}</strong> has submitted their Plan of the Day (POD) for {self.date}.</p>
-            <h4>Plan of the Day:</h4>
-            <p>{self.pod_description or 'No description provided'}</p>
-            <p>This is an automated notification from the Daily Tasks system.</p>
-            """
-        )
+        # Email notifications disabled for this module
         
         return {
             'type': 'ir.actions.client',
@@ -176,22 +165,8 @@ class DailyTask(models.Model):
         }
 
     def action_mark_done(self):
-        """Mark task as done and send SOD notification to manager"""
+        """Mark task as done (email notifications disabled)"""
         self.write({'state': 'done'})
-        
-        # Send SOD notification to manager when task is marked as done
-        for record in self:
-            if record.sod_description:
-                record._send_email_to_manager(
-                    subject=f'SOD Submitted - {record.employee_id.name}',
-                    body=f"""
-                    <p>Hello,</p>
-                    <p><strong>{record.employee_id.name}</strong> has submitted their Summary of the Day (SOD) for {record.date}.</p>
-                    <h4>Summary of the Day:</h4>
-                    <p>{record.sod_description or 'No description provided'}</p>
-                    <p>This is an automated notification from the Daily Tasks system.</p>
-                    """
-                )
 
     def action_mark_draft(self):
         """Mark task as draft"""
@@ -261,19 +236,8 @@ class DailyTask(models.Model):
     
     def _send_email_to_manager(self, subject, body):
         """Send email notification to manager"""
-        if not self.manager_id or not self.manager_id.work_email:
-            return
-        
-        mail_values = {
-            'subject': subject,
-            'body_html': body,
-            'email_to': self.manager_id.work_email,
-            'email_from': self.env.user.email or self.env.company.email,
-            'auto_delete': True,
-        }
-        
-        mail = self.env['mail.mail'].sudo().create(mail_values)
-        mail.send()
+        # Email sending disabled for this module
+        return
     
     @api.model
     def _cron_check_unsubmitted_pod(self):
@@ -323,49 +287,11 @@ class DailyTask(models.Model):
             if task and not task.pod_submitted:
                 employees_without_pod |= employee
 
-        # Send notifications to managers (only for no_pod)
-        self._notify_managers_about_missing_pod(employees_without_pod)
+        # Email notifications disabled: skip notifying managers
 
         # Record that we've sent today's notifications
         self.env['ir.config_parameter'].sudo().set_param(param_key, fields.Date.to_string(today_local))
     
     def _notify_managers_about_missing_pod(self, employees_without_pod):
-        """Send notification to direct managers about employees who haven't submitted POD.
-
-        This method notifies only the direct manager of employees who have a task
-        for today but did not submit their POD. It will only send an email to the
-        manager's `work_email` and will not create extra mail messages or activities
-        that might propagate to higher-level managers.
-        """
-        # Group employees by direct manager
-        manager_employees_map = {}
-
-        for employee in employees_without_pod:
-            manager = employee.parent_id
-            if not manager:
-                continue
-            if manager not in manager_employees_map:
-                manager_employees_map[manager] = self.env['hr.employee']
-            manager_employees_map[manager] |= employee
-
-        # Send notifications to each manager (email only)
-        for manager, emp_records in manager_employees_map.items():
-            if not manager.user_id or not manager.work_email:
-                continue
-
-            emp_names = ', '.join(emp_records.mapped('name'))
-            message = f"""
-            <p>The following employees have not submitted their Plan of the Day (POD) by 11:00 AM:</p>
-            <p><strong>{emp_names}</strong></p>
-            <p>Please follow up with them.</p>
-            """
-
-            mail_values = {
-                'subject': f'POD Escalation Alert ',
-                'body_html': message,
-                'email_to': manager.work_email,
-                'email_from': self.env.company.email or 'noreply@odoo.com',
-                'auto_delete': False,
-            }
-            mail = self.env['mail.mail'].sudo().create(mail_values)
-            mail.send()
+        """Notifications disabled for missing POD — no emails will be sent."""
+        return
